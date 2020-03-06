@@ -163,7 +163,7 @@ public class CanalMQStarter {
                 canalDestination.setPartitionHash(mqConfig.getPartitionHash());
 
                 canalServer.subscribe(clientIdentity);
-                logger.info("## the MQ producer: {} is running now ......", destination);
+                logger.info("## the MQ producer: {} is running now ......", canalDestination);
 
                 Integer getTimeout = mqProperties.getFetchTimeout();
                 Integer getBatchSize = mqProperties.getBatchSize();
