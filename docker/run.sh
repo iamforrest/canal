@@ -2,7 +2,7 @@
 
 function usage() {
     echo "Usage:"
-    echo "  run.sh [CONFIG]"
+    echo "  run.sh [CONFIG] [IMAGE]"
     echo "example 1 :"
     echo "  run.sh -e canal.instance.master.address=127.0.0.1:3306 \\"
     echo "         -e canal.instance.dbUsername=canal \\"
@@ -52,8 +52,11 @@ function getMyIp() {
   echo $myip
 }
 
-CONFIG=${@:1}
-IMAGE=${@:2}
+array=( $@ )
+len=${#array[@]}
+IMAGE=${array[$len-1]}
+CONFIG=${array[@]:0:$len-1}
+
 #VOLUMNS="-v $DATA:/home/admin/canal-server/logs"
 PORTLIST="11110 11111 11112 9100"
 PORTS=""
@@ -101,5 +104,6 @@ fi
 MEMORY="-m 4096m"
 LOCALHOST=`getMyIp`
 cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY $IMAGE"
+echo "Running cmd..."
 echo $cmd
 eval $cmd
