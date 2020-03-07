@@ -10,12 +10,14 @@ function usage() {
     echo "         -e canal.instance.connectionCharset=UTF-8 \\"
     echo "         -e canal.instance.tsdb.enable=true \\"
     echo "         -e canal.instance.gtidon=false \\"
-    echo "         -e canal.instance.filter.regex=.*\\\\\\..* "
+    echo "         -e canal.instance.filter.regex=.*\\\\\\..* \\"
+    echo "         canal/canal-server "
     echo "example 2 :"
     echo "  run.sh -e canal.admin.manager=127.0.0.1:8089 \\"
     echo "         -e canal.admin.port=11110 \\"
     echo "         -e canal.admin.user=admin \\"
-    echo "         -e canal.admin.passwd=4ACFE3202A5FF5CF467898FC58AAB1D615029441"
+    echo "         -e canal.admin.passwd=4ACFE3202A5FF5CF467898FC58AAB1D615029441 \\"
+    echo "         canal/canal-server:1.1.2 "
     exit
 }
 
@@ -51,6 +53,7 @@ function getMyIp() {
 }
 
 CONFIG=${@:1}
+IMAGE=${@:2}
 #VOLUMNS="-v $DATA:/home/admin/canal-server/logs"
 PORTLIST="11110 11111 11112 9100"
 PORTS=""
@@ -97,6 +100,6 @@ fi
 
 MEMORY="-m 4096m"
 LOCALHOST=`getMyIp`
-cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY registry.cn-hangzhou.aliyuncs.com/forrest/canal-server"
+cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY $IMAGE"
 echo $cmd
 eval $cmd
