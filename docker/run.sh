@@ -97,6 +97,6 @@ fi
 
 MEMORY="-m 4096m"
 LOCALHOST=`getMyIp`
-cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY canal/canal-server"
+cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY registry.cn-hangzhou.aliyuncs.com/forrest/canal-server"
 echo $cmd
 eval $cmd
