@@ -1,11 +1,16 @@
 package com.alibaba.otter.canal.connector.rocketmq.consumer;
 
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.fastjson.JSON;
+import com.alibaba.otter.canal.connector.core.config.CanalConstants;
+import com.alibaba.otter.canal.connector.core.consumer.CommonMessage;
+import com.alibaba.otter.canal.connector.core.spi.CanalMsgConsumer;
+import com.alibaba.otter.canal.connector.core.spi.SPI;
+import com.alibaba.otter.canal.connector.core.util.CanalMessageSerializerUtil;
+import com.alibaba.otter.canal.connector.core.util.MessageUtil;
+import com.alibaba.otter.canal.connector.rocketmq.config.RocketMQConstants;
+import com.alibaba.otter.canal.protocol.Message;
+import com.alibaba.otter.canal.protocol.exception.CanalClientException;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 import org.apache.rocketmq.acl.common.AclClientRPCHook;
 import org.apache.rocketmq.acl.common.SessionCredentials;
@@ -20,17 +25,11 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.otter.canal.connector.core.config.CanalConstants;
-import com.alibaba.otter.canal.connector.core.consumer.CommonMessage;
-import com.alibaba.otter.canal.connector.core.spi.CanalMsgConsumer;
-import com.alibaba.otter.canal.connector.core.spi.SPI;
-import com.alibaba.otter.canal.connector.core.util.CanalMessageSerializerUtil;
-import com.alibaba.otter.canal.connector.core.util.MessageUtil;
-import com.alibaba.otter.canal.connector.rocketmq.config.RocketMQConstants;
-import com.alibaba.otter.canal.protocol.Message;
-import com.alibaba.otter.canal.protocol.exception.CanalClientException;
-import com.google.common.collect.Lists;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * RocketMQ consumer SPI 实现
@@ -41,26 +40,26 @@ import com.google.common.collect.Lists;
 @SPI("rocketmq")
 public class CanalRocketMQConsumer implements CanalMsgConsumer {
 
-    private static final Logger                                logger               = LoggerFactory.getLogger(CanalRocketMQConsumer.class);
-    private static final String                                CLOUD_ACCESS_CHANNEL = "cloud";
+    private static final Logger logger = LoggerFactory.getLogger(CanalRocketMQConsumer.class);
+    private static final String CLOUD_ACCESS_CHANNEL = "cloud";
 
-    private String                                             nameServer;
-    private String                                             topic;
-    private String                                             groupName;
-    private volatile boolean                                   connected            = false;
-    private DefaultMQPushConsumer                              rocketMQConsumer;
+    private String nameServer;
+    private String topic;
+    private String groupName;
+    private volatile boolean connected = false;
+    private DefaultMQPushConsumer rocketMQConsumer;
     private BlockingQueue<ConsumerBatchMessage<CommonMessage>> messageBlockingQueue;
-    private int                                                batchSize            = -1;
-    private long                                               batchProcessTimeout  = 60 * 1000;
-    private boolean                                            flatMessage;
-    private volatile ConsumerBatchMessage<CommonMessage>       lastGetBatchMessage  = null;
-    private String                                             accessKey;
-    private String                                             secretKey;
-    private String                                             customizedTraceTopic;
-    private boolean                                            enableMessageTrace   = false;
-    private String                                             accessChannel;
-    private String                                             namespace;
-    private String                                             filter               = "*";
+    private int batchSize = -1;
+    private long batchProcessTimeout = 60 * 1000;
+    private boolean flatMessage;
+    private volatile ConsumerBatchMessage<CommonMessage> lastGetBatchMessage = null;
+    private String accessKey;
+    private String secretKey;
+    private String customizedTraceTopic;
+    private boolean enableMessageTrace = false;
+    private String accessChannel;
+    private String namespace;
+    private String filter = "*";
 
     @Override
     public void init(Properties properties, String topic, String groupName) {
@@ -68,24 +67,40 @@ public class CanalRocketMQConsumer implements CanalMsgConsumer {
         this.groupName = groupName;
         this.flatMessage = (Boolean) properties.get(CanalConstants.CANAL_MQ_FLAT_MESSAGE);
         this.messageBlockingQueue = new LinkedBlockingQueue<>(1024);
-        this.accessKey = properties.getProperty(CanalConstants.CANAL_ALIYUN_ACCESS_KEY);
-        this.secretKey = properties.getProperty(CanalConstants.CANAL_ALIYUN_SECRET_KEY);
-        String enableMessageTrace = properties.getProperty(RocketMQConstants.ROCKETMQ_ENABLE_MESSAGE_TRACE);
+        this.accessKey = getProperty(properties, CanalConstants.CANAL_ALIYUN_ACCESS_KEY);
+        this.secretKey = getProperty(properties, CanalConstants.CANAL_ALIYUN_SECRET_KEY);
+        String enableMessageTrace = getProperty(properties, RocketMQConstants.ROCKETMQ_ENABLE_MESSAGE_TRACE);
         if (StringUtils.isNotEmpty(enableMessageTrace)) {
             this.enableMessageTrace = Boolean.parseBoolean(enableMessageTrace);
         }
-        this.customizedTraceTopic = properties.getProperty(RocketMQConstants.ROCKETMQ_CUSTOMIZED_TRACE_TOPIC);
-        this.accessChannel = properties.getProperty(RocketMQConstants.ROCKETMQ_ACCESS_CHANNEL);
-        this.namespace = properties.getProperty(RocketMQConstants.ROCKETMQ_NAMESPACE);
-        this.nameServer = properties.getProperty(RocketMQConstants.ROCKETMQ_NAMESRV_ADDR);
-        String batchSize = properties.getProperty(RocketMQConstants.ROCKETMQ_BATCH_SIZE);
+        this.customizedTraceTopic = getProperty(properties, RocketMQConstants.ROCKETMQ_CUSTOMIZED_TRACE_TOPIC);
+        this.accessChannel = getProperty(properties, RocketMQConstants.ROCKETMQ_ACCESS_CHANNEL);
+        this.namespace = getProperty(properties, RocketMQConstants.ROCKETMQ_NAMESPACE);
+        this.nameServer = getProperty(properties, RocketMQConstants.ROCKETMQ_NAMESRV_ADDR);
+        logger.debug("nameServer: {}", nameServer);
+        String batchSize = getProperty(properties, RocketMQConstants.ROCKETMQ_BATCH_SIZE);
         if (StringUtils.isNotEmpty(batchSize)) {
             this.batchSize = Integer.parseInt(batchSize);
         }
-        String subscribeFilter = properties.getProperty(RocketMQConstants.ROCKETMQ_SUBSCRIBE_FILTER);
+        String subscribeFilter = getProperty(properties, RocketMQConstants.ROCKETMQ_SUBSCRIBE_FILTER);
         if (StringUtils.isNotEmpty(subscribeFilter)) {
             this.filter = subscribeFilter;
         }
+    }
+
+    private static String getProperty(Properties properties, String key) {
+        key = StringUtils.trim(key);
+        String value = System.getProperty(key);
+
+        if (value == null) {
+            value = System.getenv(key);
+        }
+
+        if (value == null) {
+            value = properties.getProperty(key);
+        }
+
+        return StringUtils.trim(value);
     }
 
     @Override
@@ -99,10 +114,10 @@ public class CanalRocketMQConsumer implements CanalMsgConsumer {
         }
 
         rocketMQConsumer = new DefaultMQPushConsumer(groupName,
-            rpcHook,
-            new AllocateMessageQueueAveragely(),
-            enableMessageTrace,
-            customizedTraceTopic);
+                rpcHook,
+                new AllocateMessageQueueAveragely(),
+                enableMessageTrace,
+                customizedTraceTopic);
         rocketMQConsumer.setVipChannelEnabled(false);
         if (CLOUD_ACCESS_CHANNEL.equals(this.accessChannel)) {
             rocketMQConsumer.setAccessChannel(AccessChannel.CLOUD);

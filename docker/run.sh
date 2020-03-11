@@ -75,6 +75,8 @@ NET_MODE=""
 case "`uname`" in
     Darwin)
         bin_abs_path=`cd $(dirname $0); pwd`
+        NET_MODE="--net=host"
+        PORTS=""
         ;;
     Linux)
         bin_abs_path=$(readlink -f $(dirname $0))
