@@ -116,7 +116,7 @@ public abstract class AbstractMQProducer implements CanalMQProducer {
         }
 
         if (value == null) {
-            value = getProperty(properties, key);
+            value = properties.getProperty(key);
         }
 
         return StringUtils.trim(value);
