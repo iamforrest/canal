@@ -77,16 +77,20 @@ case "`uname`" in
         bin_abs_path=`cd $(dirname $0); pwd`
         NET_MODE="--net=host"
         PORTS=""
+        HOST=""
         ;;
     Linux)
         bin_abs_path=$(readlink -f $(dirname $0))
         NET_MODE="--net=host"
         PORTS=""
+        LOCALHOST=`getMyIp`
+        HOST="-h $LOCALHOST"
         ;;
     *)
         bin_abs_path=`cd $(dirname $0); pwd`
         NET_MODE="--net=host"
         PORTS=""
+        HOST=""
         ;;
 esac
 BASE=${bin_abs_path}
@@ -104,8 +108,7 @@ fi
 
 
 MEMORY="-m 4096m"
-LOCALHOST=`getMyIp`
-cmd="docker run -d -it $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY $IMAGE"
+cmd="docker run $HOST $CONFIG --name=canal-server $VOLUMNS $NET_MODE $PORTS $MEMORY $IMAGE"
 echo "Running cmd..."
 echo $cmd
 eval $cmd
